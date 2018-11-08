@@ -1,0 +1,115 @@
+<?php
+
+use Drupal\Component\Utility\Unicode;
+
+/**
+ * Implements hook_page_attachments().
+ */
+function hypothesis_page_attachments(&$page) {
+  $config = \Drupal::config('hypothesis.settings');
+  $route = \Drupal::routeMatch()->getRouteObject();
+  $is_admin = \Drupal::service('router.admin_context')->isAdminRoute($route);
+
+  // If we're on an admin path or the hypothesis visbility settings return false,
+  // do not add hypothesis external library to page.
+  if ($is_admin || !_hypothesis_check_visibility()) {
+    return;
+  }
+
+  $default_behaviors = $config->get('behavior');
+  foreach ($default_behaviors as $key => $default_behavior) {
+    if (empty($default_behavior)) continue;
+    $default_behaviors[$key] = 1;
+  }
+
+  // Pass configuration to drupalSettings for hypothesisConfig.
+  $page['#attached']['drupalSettings']['hypothesis']['defaults'] = $default_behaviors;
+  $page['#attached']['library'][] = 'hypothesis/hypothesis.defaults';
+
+  // Add module's main library, which includes external AddToAny core JS,
+  // and the module's CSS.
+  $page['#attached']['library'][] = 'hypothesis/hypothesis';
+}
+
+/**
+ * Helper function for getting hypothesis visibility config.
+ */
+function _hypothesis_check_visibility() {
+  $config = \Drupal::config('hypothesis.settings');
+  $user = \Drupal::currentUser();
+  $user_roles = $user->getRoles();
+
+  foreach ($user_roles as $user_role) {
+    $assigned_user_roles[$user_role] = $user_role;
+  }
+  
+  // If there are no roles associated, hypothesis is displayed for every role.
+  // If none of the user's roles matches the hypothesis role settings, it wont show.
+  $config_user_roles = $config->get('user_roles');
+  $config_roles = $config_user_roles['roles'];
+  $filter_roles = array_filter($config_roles);
+  if (is_array($config_roles) && !empty($filter_roles) && !array_intersect($config_roles, array_keys($assigned_user_roles))) {
+    // No match.
+    return FALSE;
+  }
+
+  // Check which pages hypothesis should display on.
+  $config_path = $config->get('path');
+  $visibility = $config_path['hypothesis_visibility'];
+  $pages = $config_path['hypothesis_pages'];
+
+  // Limited visibility must list at least one page.
+  if (!empty($visibility) && empty($pages)) {
+    return FALSE;
+  }
+  // Match path if necessary.
+  if ($pages) {
+    // Convert path to lowercase. This allows comparison of the same path
+    // with different case. Ex: /Page, /page, /PAGE.
+    $pages = Unicode::strtolower($pages);
+    
+    // Convert the Drupal path to lowercase
+    $current_path = \Drupal::service('path.current')->getPath();
+    $path = Unicode::strtolower($current_path);
+
+    // Compare the lowercase internal and lowercase path alias (if any).
+    $page_match = \Drupal::service('path.matcher')->matchPath($path, $pages);
+    if ($path != $current_path) {
+      $page_match = $page_match || \Drupal::service('path.matcher')->matchPath($current_path, $pages);
+    }
+    // When $visibility has a value of 0 (HYPOTHESIS_VISIBILITY_NOTLISTED),
+    // hypothesis is displayed on all pages except those listed in $pages.
+    // When set to 1 (HYPOTHESIS_VISIBILITY_LISTED), it is displayed only on those
+    // pages listed in $pages.
+    $page_match = !($visibility xor $page_match);
+  }
+  else {
+    $page_match = TRUE;
+  }
+  if (!$page_match) {
+    return FALSE;
+  }
+
+  //Check which content types hypothesis should display on.
+  $config_content_types = $config->get('content_types');
+  $config_types = $config_content_types['types'];
+  $filter_types = array_filter($config_types);
+
+  if (is_array($config_types) && !empty($filter_types)) {
+    $node = \Drupal::request()->attributes->get('node');
+    if (!empty($node)) {
+      // This is a node or node edit page.
+      if (empty($config_types[$node->getType()])) {
+        // Hypothesis should not be displayed for this node type.
+        return FALSE;
+      }
+    }
+    else {
+      // This is not a node page, dont display hypothesis.
+      return FALSE;
+    }
+  }
+
+  return TRUE;
+
+}

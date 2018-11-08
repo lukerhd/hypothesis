@@ -1,0 +1,17 @@
+# Schema file for the configuration files of the addtoany module.
+hypothesis.settings:
+  type: config_object
+  label: 'Hypothesis Settings'
+  mapping:
+    behavior:
+      type: sequence
+      label: 'Default Settings'
+    types:
+      type: array
+      label: 'Content types'
+    roles:
+      type: array
+      label: 'Roles'
+    paths:
+      type: array
+      label: 'Paths'

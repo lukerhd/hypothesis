@@ -1,0 +1,5 @@
+hypothesis.admin_settings_form:
+  title: 'Hypothesis'
+  parent: system.admin_config_services
+  description: 'Configure Hypothes.is integration for the site.'
+  route_name: hypothesis.admin_settings_form

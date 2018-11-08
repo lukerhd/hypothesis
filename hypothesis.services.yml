@@ -1,0 +1,4 @@
+services:
+  hypothesis.settings:
+    class: Drupal\hypothesis\HypothesisSettings
+    arguments: ['@config.factory', '@settings']

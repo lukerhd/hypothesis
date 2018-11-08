@@ -1,0 +1,23 @@
+hypothesis:
+  version: VERSION
+  js:
+    https://hypothes.is/embed.js: { type: external, minified: true }
+  dependencies:
+    - core/drupal
+    
+hypothesis.admin:
+  version: VERSION
+  js:
+    js/hypothesis.admin.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+
+hypothesis.defaults:
+  version: VERSION
+  js:
+    js/showdefaults.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
